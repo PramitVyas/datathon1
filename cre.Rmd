@@ -10,10 +10,25 @@ df = read.csv("sample-5mil.csv")
 loc = read.csv("Wave all routes_Wave locations.csv")
 df
 unique(df$lane.occupancy)
+fd = read.csv("Wavetronix pg67.csv")
+g = read.csv("Wavetronix pg81.csv")
+fd = fd[-c(1,2)]
+g = g[-c(1,2)]
+df
 
+df=rbind(df, fd, g)
 
+which(!(colnames(fd) %in% colnames(df)))
 
+fd
+df
+
+plot(df$lane.speed, df$lane.occupancy)
 ```
+
+
+
+
 ```{R}
 library(tidyverse)
 df = df %>% sample()
@@ -38,9 +53,16 @@ df3 = df2 %>% filter(status == "OK")
 df3$direction = sapply(strsplit(df3$detector.id,'-'), function(x) x[2]) %>% sapply(function(x) str_extract(x, "[A-Za-z]"))
 df3$detector.id1 = gsub("\\s+", "", df3$detector.id1)
 df4= df3 %>% 
-  inner_join( loc1, by = join_by(detector.id1 == Infodevice.Name)) %>% 
-  group_by(cst.time,detector.id1, direction) %>% 
-  summarise(Lattitude = mean(Latitude), Longitude = mean(Longitude),  sample.period = mode(sample.period), lane.occupancy = mean(lane.occupancy)/100, lane.count = sum(lane.count), lane.speed = mean(lane.speed))
+  inner_join( loc1, by = join_by(detector.id1 == Infodevice.Name)) %>% mutate(cdate = substring(cst.time, 1, 10))
+
+df4
+
+
+unique(df4$cdate)
+df99 = df4 %>% 
+  group_by(cdate, Latitude, Longitude) %>% summarise(lane.count = sum(lane.count))
+
+df5 = df4 %>%  summarise(Lattitude = mean(Latitude), Longitude = mean(Longitude),  sample.period = mode(sample.period), lane.occupancy = mean(lane.occupancy)/100, lane.count = sum(lane.count), lane.speed = mean(lane.speed))
 
 
 
@@ -56,6 +78,11 @@ loc %>% filter("115" %in% loc$Infodevice.Name)
 which(table(loc$Infodevice.Id) == 2
       
       
+df4 %>% filter(cst.time == "2022-12-01-00-57-42")
+
+length(unique(df3$cst.time))
+
+
 df4
 ```
 
@@ -70,10 +97,115 @@ first_letter <- str_extract(my_string, "[A-Za-z]")
 
 # Print the first letter
 cat("The first letter is:", first_letter, "\n")
+
+
+t1 = df99 %>% filter(cdate == "2022-11-25") %>% pull(lane.count)
+t2 = df99 %>% filter(cdate == "2022-11-24") %>% pull(lane.count)
+t.test(t1, t2)
+
+library(mvShapiroTest)
+mvShapiro.Test(df4 %>% select(lane.speed, lane.count) %>% as.matrix())
+df4
+```
+
+
+```{R}
+df4 %>% filter(substring(detector.id,1,2) == "DM") %>% write.csv(file = "roger.csv", row.names = FALSE)
+
+
+df4 %>% mutate(lane = substring)
+
+ sapply(str_split(df4$detector.id, " "), function(x) {
+  if (length(x) >= 2) {
+    return(x[length(x) - 1])
+  } else {
+    return(NA)
+  }
+})
+ 
+df4$lane= str_sub(df4$detector.id, -2, -2)
+
+df5 = df4 %>% filter(device.description == "NORMAL", lane.count != 0)
+
+df5
+
+m = matrix(1, ncol = 32)
+new_df <- data.frame(m)
+colnames(new_df) = colnames(df5)
+i = 1
+for (i in 1:nrow(df5)) {
+  row <- df5[i, ]  # Get the current row
+  count <- row$lane.count  # Get the lane.count value
+
+  # Duplicate the row 'count' times and add them to the new dataframe
+  sss = data.frame(m)
+  colnames(sss) = colnames(row)
+  for(j in 1:count){
+    sss = rbind(sss, row)
+  }
+  sss = sss[-1,]
+  new_df <- rbind(new_df, sss)
+  
+  if(i %% 5000 == 0){
+    print(i)
+  }
+}
+
+
 ```
 
 
 
+```{R}
+Load required libraries
+library(shiny)
+library(leaflet)
+library(dplyr)
+library(leaflet.extras)
+
+Create Shiny app
+  ui <- fluidPage(
+    titlePanel("Iowa Daily Lane Count Heatmap"),
+    sidebarLayout(
+      sidebarPanel(
+        dateInput("date", "Select Date:", value = "2022-11-02"),
+        sliderInput("radius", "Heatmap Radius:", min = 10, max = 100, value = 30)
+      ),
+      mainPanel(
+        leafletOutput("map")
+      )
+    )
+  )
+
+  server <- function(input, output) {
+    filtered_data <- reactive({
+      subset(df99, cdate == input$date)
+    })
+
+    output$map <- renderLeaflet({
+      m <- leaflet() %>%
+        addTiles() %>%
+        setView(lng = -93.61958, lat = 41.59083, zoom = 11)  # Center the map closer to Des Moines
+
+      if (nrow(filtered_data()) > 0) {
+        m <- m %>% addHeatmap(
+          data = filtered_data(),
+          lat = ~Latitude,
+          lng = ~Longitude,
+          radius = input$radius,
+          blur = 15,
+          max = max(filtered_data()$lane.count)
+        )
+      }
+
+      m
+    })
+  }
+
+  shinyApp(ui, server)
+
+
+```
 
 
 
