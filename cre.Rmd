@@ -1,0 +1,80 @@
+---
+title: "v"
+author: "Pramit Vyas"
+date: "2023-10-21"
+output: html_document
+---
+
+```{R}
+df = read.csv("sample-5mil.csv")
+loc = read.csv("Wave all routes_Wave locations.csv")
+df
+unique(df$lane.occupancy)
+
+
+
+```
+```{R}
+library(tidyverse)
+df = df %>% sample()
+df %>% mutate(hour = substring(as.character(time),1,2), minute = substring(as.character(time),3,4), second = substring(as.character(time),5,6), )
+
+df %>% mutate(bound = substring(detector.id, 9, 10))
+  
+df %>% filter(lane.occupancy == 10)
+df = df[-c(1,2)]
+df
+loc %>% filter(Infodevice.Id == "OpenTMS-Detector45588")
+
+samp <- samp$detector.id
+didsub = sapply(strsplit(df$detector.id,'-'), function(x) x[1])
+df2 = df %>% filter(lane.count != 0 | lane.occupancy == 0)
+df2$detector.id1 = sapply(strsplit(df2$detector.id,'-'), function(x) x[1])
+head(df2)
+ind = which(!duplicated(loc$Infodevice.Name))
+loc1 = loc[ind,]
+nrow(loc1)
+df3 = df2 %>% filter(status == "OK")
+df3$direction = sapply(strsplit(df3$detector.id,'-'), function(x) x[2]) %>% sapply(function(x) str_extract(x, "[A-Za-z]"))
+df3$detector.id1 = gsub("\\s+", "", df3$detector.id1)
+df4= df3 %>% 
+  inner_join( loc1, by = join_by(detector.id1 == Infodevice.Name)) %>% 
+  group_by(cst.time,detector.id1, direction) %>% 
+  summarise(Lattitude = mean(Latitude), Longitude = mean(Longitude),  sample.period = mode(sample.period), lane.occupancy = mean(lane.occupancy)/100, lane.count = sum(lane.count), lane.speed = mean(lane.speed))
+
+
+
+View(df)
+OpenTMS-Detector48481
+
+df2
+
+which(!(df3$detector.id1 %in% loc$Infodevice.Name))
+df3$detector.id1[103]
+length(unique(loc$Infodevice.Id)) == nrow(loc)
+loc %>% filter("115" %in% loc$Infodevice.Name)
+which(table(loc$Infodevice.Id) == 2
+      
+      
+df4
+```
+
+
+
+```{R}
+library(stringr)
+my_string <- "   Hello, world!"
+
+# Use stringr to extract the first letter
+first_letter <- str_extract(my_string, "[A-Za-z]")
+
+# Print the first letter
+cat("The first letter is:", first_letter, "\n")
+```
+
+
+
+
+
+
+
